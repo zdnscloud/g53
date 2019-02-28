@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"g53"
-	"g53/util"
+	"github.com/zdnscloud/g53"
+	"github.com/zdnscloud/g53/util"
 	"strings"
 )
 

@@ -3,7 +3,7 @@ package g53
 import (
 	"testing"
 
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 func parseMatchRender(t *testing.T, rawData string) {

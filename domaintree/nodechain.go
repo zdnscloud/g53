@@ -1,7 +1,7 @@
 package domaintree
 
 import (
-	"g53"
+	"github.com/zdnscloud/g53"
 )
 
 const RBT_MAX_LEVEL = g53.MAX_LABELS

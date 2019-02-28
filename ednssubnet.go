@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 const (

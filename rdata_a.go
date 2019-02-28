@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net"
 
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 type A struct {

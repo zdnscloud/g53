@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 type HeaderFlag uint16

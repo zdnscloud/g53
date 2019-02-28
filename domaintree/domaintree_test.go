@@ -3,8 +3,8 @@ package domaintree
 import (
 	"testing"
 
-	ut "cement/unittest"
-	"g53"
+	ut "github.com/zdnscloud/cement/unittest"
+	"github.com/zdnscloud/g53"
 )
 
 /* The initial structure of rbtree

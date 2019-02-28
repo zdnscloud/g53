@@ -1,7 +1,7 @@
 package g53
 
 import (
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 func MakeAXFR(zone *Name, tsig *TSIG) *Message {

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"g53/util"
+	"github.com/zdnscloud/g53/util"
 )
 
 type MX struct {
