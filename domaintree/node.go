@@ -168,3 +168,11 @@ func (n *Node) Clone(valueConeFunc ValueCloneFunc) *Node {
 	new.down = new.down.Clone(valueConeFunc)
 	return &new
 }
+
+func (n *Node) getSubTreeRoot() *Node {
+	if n.parent != NULL_NODE {
+		return n.parent.getSubTreeRoot()
+	}
+
+	return n
+}
