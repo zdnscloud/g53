@@ -464,3 +464,14 @@ func TestClone(t *testing.T) {
 		ut.Equal(t, i+1, node.Data().(int))
 	}
 }
+
+func TestTreeRemove(t *testing.T) {
+	tree := createDomainTree(true)
+	names := []string{"c", "b", "a", "x.d.e.f", "z.d.e.f", "g.h", "i.g.h", "o.w.y.d.e.f", "j.z.d.e.f", "p.w.y.d.e.f", "q.w.y.d.e.f"}
+
+	for i := len(names) - 1; i >= 0; i-- {
+		err := tree.Remove(g53.NameFromStringUnsafe(names[i]))
+		ut.Equal(t, err, nil)
+	}
+	ut.Equal(t, 0, tree.NodeCount())
+}

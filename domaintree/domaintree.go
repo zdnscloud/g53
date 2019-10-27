@@ -320,11 +320,8 @@ func (tree *DomainTree) rightRotate(root **Node, node *Node) *Node {
 }
 
 func (tree *DomainTree) Remove(name *g53.Name) error {
-	if name.IsRoot() {
-		return nil
-	}
-
-	node, result := tree.Search(name)
+	nodePath := NewNodeChain()
+	node, result := tree.SearchExt(name, nodePath, nil, nil)
 	if result != ExactMatch {
 		return fmt.Errorf("no found node with domain %s", name.String(false))
 	}
@@ -335,14 +332,18 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 	}
 
 	for {
-		upperNode := node.getSubTreeRoot().parent
+		nodePath.Pop()
+		upperNode := NULL_NODE
+		if nodePath.IsEmpty() == false {
+			upperNode = nodePath.Top()
+		}
 		if node.left != NULL_NODE && node.right != NULL_NODE {
 			rightMost := node.left
 			for rightMost.right != NULL_NODE {
 				rightMost = rightMost.right
 			}
 
-			tree.exchange(node, rightMost)
+			tree.exchange(node, rightMost, upperNode)
 		}
 
 		child := node.left
@@ -350,7 +351,7 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 			child = node.right
 		}
 
-		tree.connectChild(node, child)
+		tree.connectChild(node, node, child, upperNode)
 		if child != NULL_NODE {
 			child.parent = node.parent
 		}
@@ -368,7 +369,7 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 		}
 
 		tree.nodeCount -= 1
-		if upperNode.down != NULL_NODE || upperNode.IsEmpty() == false || upperNode.name.IsRoot() {
+		if upperNode.down != NULL_NODE || upperNode.IsEmpty() == false {
 			break
 		}
 
@@ -378,24 +379,24 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 	return nil
 }
 
-func (tree *DomainTree) exchange(node, lowerNode *Node) {
-	exchangeNodeData(node.left, lowerNode.left)
+func (tree *DomainTree) exchange(node, lowerNode, upperNode *Node) {
+	node.left, lowerNode.left = lowerNode.left, node.left
 	if lowerNode.left == lowerNode {
 		lowerNode.left = node
 	}
 
-	exchangeNodeData(node.right, lowerNode.right)
+	node.right, lowerNode.right = lowerNode.right, node.right
 	if lowerNode.right == lowerNode {
 		lowerNode.right = node
 	}
 
-	exchangeNodeData(node.parent, lowerNode.parent)
+	node.parent, lowerNode.parent = lowerNode.parent, node.parent
 	if node.parent == node {
 		node.parent = lowerNode
 	}
 
-	exchangeNodeColor(node, lowerNode)
-	tree.connectChild(node, lowerNode)
+	node.color, lowerNode.color = lowerNode.color, node.color
+	tree.connectChild(lowerNode, node, lowerNode, upperNode)
 
 	if node.parent.left == lowerNode {
 		node.parent.left = node
@@ -412,31 +413,28 @@ func (tree *DomainTree) exchange(node, lowerNode *Node) {
 	}
 }
 
-func exchangeNodeData(n1, n2 *Node) {
-	n1.data, n2.data = n2.data, n1.data
-}
+func (tree *DomainTree) connectChild(node, oldNode, newNode, upperNode *Node) {
+	connectNode := node.parent
+	if node.parent == NULL_NODE {
+		connectNode = upperNode
+	}
 
-func exchangeNodeColor(n1, n2 *Node) {
-	n1.color, n2.color = n2.color, n1.color
-}
-
-func (tree *DomainTree) connectChild(node, lowerNode *Node) {
-	if lowerNode.parent != NULL_NODE {
-		if lowerNode.parent.left == node {
-			lowerNode.parent.left = lowerNode
-		} else if lowerNode.parent.right == node {
-			lowerNode.parent.right = lowerNode
+	if connectNode != NULL_NODE {
+		if connectNode.left == oldNode {
+			connectNode.left = newNode
+		} else if connectNode.right == oldNode {
+			connectNode.right = newNode
 		} else {
-			lowerNode.parent.down = lowerNode
+			connectNode.down = newNode
 		}
 	} else {
 		currentRoot := &tree.root
-		*currentRoot = lowerNode
+		*currentRoot = newNode
 	}
 }
 
 func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
-	for &parent.down != root {
+	for parent != NULL_NODE {
 		sibling := getSibling(parent, child)
 		if sibling == NULL_NODE {
 			panic("sibling can`t be null node when remove rebalance")
@@ -454,8 +452,8 @@ func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
 			sibling = getSibling(parent, child)
 		}
 
-		if sibling == NULL_NODE || sibling.color == BLACK {
-			panic("sibling can`t be null node or its color can`t be black")
+		if sibling == NULL_NODE || sibling.color != BLACK {
+			panic("sibling can`t be null node or its color can`t be red")
 		}
 
 		if sibling.left.color == BLACK && sibling.right.color == BLACK {
@@ -470,19 +468,17 @@ func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
 			break
 		}
 
-		if sibling == NULL_NODE || sibling.color == BLACK {
-			panic("sibling can`t be null node or its color can`t be black")
+		if sibling == NULL_NODE || sibling.color != BLACK {
+			panic("sibling can`t be null node or its color can`t be red")
 		}
 
-		siblingLeft := sibling.left
-		siblingRight := sibling.right
 		if parent.left != child {
-			exchangeNodeData(siblingLeft, siblingRight)
+			sibling.left, sibling.right = sibling.right, sibling.left
 		}
 
-		if siblingRight.color == BLACK {
+		if sibling.right.color == BLACK {
 			sibling.color = RED
-			siblingLeft.color = BLACK
+			sibling.left.color = BLACK
 
 			if parent.left == child {
 				tree.rightRotate(root, sibling)
@@ -493,19 +489,17 @@ func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
 			sibling = getSibling(parent, child)
 		}
 
-		if sibling == NULL_NODE || sibling.color == BLACK {
-			panic("sibling can`t be null node or its color can`t be black")
+		if sibling == NULL_NODE || sibling.color != BLACK {
+			panic("sibling can`t be null node or its color can`t be red")
 		}
 
 		sibling.color = parent.color
 		parent.color = BLACK
-		siblingLeft = sibling.left
-		siblingRight = sibling.right
 		if parent.left != child {
-			exchangeNodeData(siblingLeft, siblingRight)
+			sibling.left, sibling.right = sibling.right, sibling.left
 		}
 
-		siblingRight.color = BLACK
+		sibling.right.color = BLACK
 		if parent.left == child {
 			tree.leftRotate(root, parent)
 		} else {
