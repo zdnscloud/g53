@@ -3,6 +3,7 @@ package domaintree
 import (
 	"errors"
 	"fmt"
+
 	"github.com/zdnscloud/g53"
 )
 
@@ -146,6 +147,7 @@ func (tree *DomainTree) Insert(name *g53.Name) (*Node, error) {
 	current := tree.root
 
 	order := -1
+	firstCompare := true
 	for current != NULL_NODE {
 		comparison := name.Compare(current.name, false)
 		if comparison.Relation == g53.EQUAL {
@@ -155,22 +157,14 @@ func (tree *DomainTree) Insert(name *g53.Name) (*Node, error) {
 				return current, ErrAlreadyExist
 			}
 		} else {
-			if comparison.CommonLabelCount == 1 && current.name.IsRoot() == false {
-				parent = current
-				order = comparison.Order
-				if order < 0 {
-					current = current.left
-				} else {
-					current = current.right
-				}
-			} else {
+			if comparison.Relation == g53.SUBDOMAIN {
 				// insert sub domain to sub tree
-				if comparison.Relation == g53.SUBDOMAIN {
-					parent = NULL_NODE
-					upNode = current
-					name, _ = name.Subtract(current.name)
-					current = current.down
-				} else {
+				parent = NULL_NODE
+				upNode = current
+				name, _ = name.Subtract(current.name)
+				current = current.down
+			} else {
+				if comparison.CommonLabelCount > 1 || firstCompare {
 					// The number of labels in common is fewer
 					// than the number of labels at the current
 					// node, so the current node must be adjusted
@@ -180,9 +174,18 @@ func (tree *DomainTree) Insert(name *g53.Name) (*Node, error) {
 						name.LabelCount()-uint(comparison.CommonLabelCount),
 						uint(comparison.CommonLabelCount))
 					tree.nodeFission(current, commonAncestor)
+				} else {
+					parent = current
+					order = comparison.Order
+					if order < 0 {
+						current = current.left
+					} else {
+						current = current.right
+					}
 				}
 			}
 		}
+		firstCompare = false
 	}
 
 	currentRoot := &tree.root
@@ -332,11 +335,14 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 	}
 
 	for {
-		nodePath.Pop()
 		upperNode := NULL_NODE
 		if nodePath.IsEmpty() == false {
-			upperNode = nodePath.Top()
+			nodePath.Pop()
+			if nodePath.IsEmpty() == false {
+				upperNode = nodePath.Top()
+			}
 		}
+
 		if node.left != NULL_NODE && node.right != NULL_NODE {
 			rightMost := node.left
 			for rightMost.right != NULL_NODE {
@@ -369,7 +375,7 @@ func (tree *DomainTree) Remove(name *g53.Name) error {
 		}
 
 		tree.nodeCount -= 1
-		if upperNode.down != NULL_NODE || upperNode.IsEmpty() == false {
+		if upperNode == NULL_NODE || upperNode.down != NULL_NODE || upperNode.IsEmpty() == false {
 			break
 		}
 
@@ -472,13 +478,14 @@ func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
 			panic("sibling can`t be null node or its color can`t be red")
 		}
 
+		ss1, ss2 := sibling.left, sibling.right
 		if parent.left != child {
-			sibling.left, sibling.right = sibling.right, sibling.left
+			ss1, ss2 = ss2, ss1
 		}
 
-		if sibling.right.color == BLACK {
+		if ss2.color == BLACK {
 			sibling.color = RED
-			sibling.left.color = BLACK
+			ss1.color = BLACK
 
 			if parent.left == child {
 				tree.rightRotate(root, sibling)
@@ -495,11 +502,12 @@ func (tree *DomainTree) removeRebalance(root **Node, child, parent *Node) {
 
 		sibling.color = parent.color
 		parent.color = BLACK
+		ss1, ss2 = sibling.left, sibling.right
 		if parent.left != child {
-			sibling.left, sibling.right = sibling.right, sibling.left
+			ss1, ss2 = ss2, ss1
 		}
 
-		sibling.right.color = BLACK
+		ss2.color = BLACK
 		if parent.left == child {
 			tree.leftRotate(root, parent)
 		} else {
@@ -647,31 +655,6 @@ func (tree *DomainTree) anyHelper(node *Node, fn func(*Node) bool) bool {
 	return tree.anyHelper(node.left, fn) ||
 		tree.anyHelper(node.right, fn) ||
 		tree.anyHelper(node.down, fn)
-}
-
-func (tree *DomainTree) EmptyLeafNodeRatio() int {
-	if tree.nodeCount == 0 {
-		return 0
-	}
-
-	emptyNodeCount := 0
-	tree.forEachHelper(tree.root, true, func(node *Node) {
-		if node.IsEmpty() && node.IsLeaf() {
-			emptyNodeCount += 1
-		}
-	})
-	return (emptyNodeCount * 100 / tree.nodeCount)
-}
-
-func (tree *DomainTree) RemoveEmptyLeafNode() *DomainTree {
-	new := NewDomainTree(tree.returnEmptyNode)
-	tree.forEachExHelper(tree.root, g53.Root, true, func(name *g53.Name, node *Node) {
-		if node.IsEmpty() == false || node.IsLeaf() == false {
-			n, _ := new.Insert(name)
-			n.SetData(node.Data())
-		}
-	})
-	return new
 }
 
 func (tree *DomainTree) Clone(valueConeFunc ValueCloneFunc) *DomainTree {
