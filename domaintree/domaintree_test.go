@@ -428,23 +428,6 @@ func TestTreeForEach(t *testing.T) {
 	ut.Equal(t, tree.nodeCount, nodeCount)
 }
 
-func TestRemoveEmptyNode(t *testing.T) {
-	tree := NewDomainTree(true)
-	treeInsertString(tree, ".")
-	treeInsertString(tree, "cn.")
-	treeInsertString(tree, "a.cn.")
-	node, _ := treeInsertString(tree, "com.")
-	node.SetData(1)
-
-	ut.Equal(t, tree.NodeCount(), 4)
-	ut.Equal(t, tree.EmptyLeafNodeRatio(), 25)
-
-	new := tree.RemoveEmptyLeafNode()
-	ut.Equal(t, new.NodeCount(), 3)
-	new = new.RemoveEmptyLeafNode()
-	ut.Equal(t, new.NodeCount(), 2)
-}
-
 func cloneIntPoint(v interface{}) interface{} {
 	var n int
 	n = *(v.(*int))
