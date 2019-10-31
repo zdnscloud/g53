@@ -473,28 +473,28 @@ func TestTreeRemoveRandomDomain(t *testing.T) {
 }
 
 func removeRandDomain(tree *DomainTree) error {
-	names := make(map[string]int)
+	var names []*g53.Name
 	for i := 1; i < 1000; i++ {
-		names[RandomDomain()] = i
+		name := g53.NameFromStringUnsafe(RandomDomain2())
+		node, err := tree.Insert(name)
+		if err == nil {
+			names = append(names, name)
+			node.data = i
+		}
 	}
 
-	for name, data := range names {
-		node, _ := treeInsertString(tree, name)
-		node.data = data
-	}
-
-	for n := range names {
-		node, ret := tree.Search(g53.NameFromStringUnsafe(n))
+	for _, name := range names {
+		node, ret := tree.Search(name)
 		if ret != ExactMatch {
-			return fmt.Errorf("no found name: %v in names: %v\n", n, names)
+			return fmt.Errorf("no found name: %v in the tree\n", name.String(false))
 		}
-		err := tree.Remove(g53.NameFromStringUnsafe(n))
+		err := tree.Remove(name)
 		if err != nil {
-			return fmt.Errorf("remove %s failed: %v\n", n, err.Error())
+			return fmt.Errorf("remove %s failed: %v\n", name.String(false), err.Error())
 		}
-		_, ret = tree.Search(g53.NameFromStringUnsafe(n))
+		_, ret = tree.Search(name)
 		if node.IsLeaf() && ret == ExactMatch {
-			return fmt.Errorf("should remove name %s but found in tree\n", n)
+			return fmt.Errorf("should remove name %s but found in tree\n", name.String(false))
 		}
 	}
 	if 0 != tree.NodeCount() {
