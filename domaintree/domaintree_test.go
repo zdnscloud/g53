@@ -475,7 +475,7 @@ func TestTreeRemoveRandomDomain(t *testing.T) {
 func removeRandDomain(tree *DomainTree) error {
 	var names []*g53.Name
 	for i := 1; i < 1000; i++ {
-		name := g53.NameFromStringUnsafe(RandomDomain2())
+		name := g53.NameFromStringUnsafe(g53.RandomNoneFQDNDomain())
 		node, err := tree.Insert(name)
 		if err == nil {
 			names = append(names, name)
