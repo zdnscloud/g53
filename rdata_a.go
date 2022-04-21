@@ -43,7 +43,11 @@ func AFromString(s string) (*A, error) {
 	f, err := fieldFromString(RDF_D_IP, s)
 	if err == nil {
 		host, _ := f.(net.IP)
-		return &A{host.To4()}, nil
+		if host = host.To4(); host == nil {
+			return nil, ErrInvalidIPAddr
+		} else {
+			return &A{host}, nil
+		}
 	} else {
 		return nil, err
 	}
